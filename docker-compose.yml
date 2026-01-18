@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  kuribot:
+    build: .
+    container_name: kuribot
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    stdin_open: true # allows interactive input
+    tty: true        # allows interactive input
+    restart: unless-stopped

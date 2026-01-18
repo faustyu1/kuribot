@@ -1,0 +1,7 @@
+kurigram
+tgcrypto
+python-dotenv
+aiohttp
+rich
+uvloop; platform_system != 'Windows'
+psutil
