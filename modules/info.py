@@ -19,7 +19,17 @@ async def get_cmd_output(cmd):
     except:
         return ""
 
+_GIT_CACHE = None
+_LAST_GIT_CHECK = 0
+CACHE_TIME = 60000 # 10 minutes
+
 async def get_git_info():
+    global _GIT_CACHE, _LAST_GIT_CHECK
+    now = time.time()
+    
+    if _GIT_CACHE and (now - _LAST_GIT_CHECK < CACHE_TIME):
+        return _GIT_CACHE
+
     try:
         # Get hash
         commit_hash = await get_cmd_output(["git", "rev-parse", "--short", "HEAD"])
@@ -29,7 +39,7 @@ async def get_git_info():
         version = await get_cmd_output(["git", "describe", "--tags"])
         if not version: version = "1.0.0"
         
-        # Check updates
+        # Check updates (silent fetch)
         await get_cmd_output(["git", "fetch"])
         status = await get_cmd_output(["git", "status", "-uno"])
         
@@ -40,9 +50,22 @@ async def get_git_info():
         else:
             update_status = "Update available"
             
-        return version, commit_hash, branch, update_status
+        # Get remote URL
+        remote = await get_cmd_output(["git", "remote", "get-url", "origin"])
+        if "github.com" in remote:
+            # Handle both https and ssh formats
+            if "@" in remote: # SSH
+                remote = remote.split(":")[-1].replace(".git", "")
+            else: # HTTPS
+                remote = remote.split("github.com/")[1].replace(".git", "")
+        else:
+            remote = "Local"
+            
+        _GIT_CACHE = (version, commit_hash, branch, update_status, remote)
+        _LAST_GIT_CHECK = now
+        return _GIT_CACHE
     except Exception:
-        return "Unknown", "??????", "Unknown", "Unknown"
+        return "Unknown", "??????", "Unknown", "Unknown", "Unknown"
 
 def get_uptime():
     try:
@@ -53,10 +76,10 @@ def get_uptime():
         d, h = divmod(h, 24)
         
         parts = []
-        if d > 0: parts.append(f"{int(d)}d")
-        if h > 0: parts.append(f"{int(h)}h")
-        if m > 0: parts.append(f"{int(m)}m")
-        if s > 0: parts.append(f"{int(s)}s")
+        if d > 0: parts.append(f"{int(d)}")
+        if h > 0: parts.append(f"{int(h)}")
+        if m > 0: parts.append(f"{int(m)}")
+        if s > 0: parts.append(f"{int(s)}")
         
         return ":".join(parts) if parts else "0s"
     except:
@@ -67,7 +90,7 @@ async def info_handler(client: Client, message: Message):
     await message.edit("<b>🔄 Gathering info...</b>")
     
     # Git Info
-    version, commit, branch, up_status = await get_git_info()
+    version, commit, branch, up_status, remote = await get_git_info()
     
     # System Info
     process = psutil.Process(os.getpid())
@@ -78,14 +101,18 @@ async def info_handler(client: Client, message: Message):
     owner = f"{message.from_user.first_name}"
     if message.from_user.username:
         owner += f" | @{message.from_user.username}"
+    repo_name = remote if remote != "Unknown" else "faustyu1/kuribot"
     prefix = "." # Assuming default, strictly we should check client.command_prefixes but '.' is standard for userbots
     
     # Formatting
     uptime = get_uptime()
     
+    # Version Link
+    version_display = f"{version} <a href='https://github.com/{repo_name}'>#{commit}</a>" if "/" in repo_name else f"{version} #{commit}"
+    
     msg = f"""<b>😎 Owner:</b> {owner}
 
-<b>💫 Version:</b> {version} #{commit}
+<b>💫 Version:</b> {version_display}
 <b>🌳 Branch:</b> {branch}
 <b>😌 Status:</b> {up_status}
 
@@ -95,4 +122,4 @@ async def info_handler(client: Client, message: Message):
 <b>⚡️ CPU usage:</b> ~{cpu_usage}%
 <b>💼 RAM usage:</b> ~{memory_usage:.1f} MB"""
 
-    await message.edit(msg)
+    await message.edit(msg, disable_web_page_preview=True)
