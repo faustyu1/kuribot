@@ -2,22 +2,11 @@ import os
 import time
 import psutil
 import platform
-import asyncio
-from pyrogram import filters, Client
-from pyrogram.types import Message
-from datetime import datetime
-
-async def get_cmd_output(cmd):
-    try:
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, _ = await process.communicate()
-        return stdout.decode().strip()
-    except:
-        return ""
+import sys
+from pyrogram import filters, Client, __version__ as pyro_version
+from pyrogram.types import Message, LinkPreviewOptions
+from core.config import config
+from core.utils import get_cmd_output, get_uptime
 
 _GIT_CACHE = None
 _LAST_GIT_CHECK = 0
@@ -67,27 +56,17 @@ async def get_git_info():
     except Exception:
         return "Unknown", "??????", "Unknown", "Unknown", "Unknown"
 
-def get_uptime():
-    try:
-        p = psutil.Process(os.getpid())
-        uptime_seconds = time.time() - p.create_time()
-        m, s = divmod(uptime_seconds, 60)
-        h, m = divmod(m, 60)
-        d, h = divmod(h, 24)
-        
-        parts = []
-        if d > 0: parts.append(f"{int(d)}")
-        if h > 0: parts.append(f"{int(h)}")
-        if m > 0: parts.append(f"{int(m)}")
-        if s > 0: parts.append(f"{int(s)}")
-        
-        return ":".join(parts) if parts else "0s"
-    except:
-        return "Unknown"
 
 @Client.on_message(filters.command("info", prefixes=".") & filters.me)
 async def info_handler(client: Client, message: Message):
-    await message.edit("<b>🔄 Gathering info...</b>")
+    # Retrieve banner from config
+    banner = config.get("info_banner")
+    
+    # If using banner, we might need to delete original message and send new one
+    # If no banner, we modify existing
+    
+    if not banner:
+        await message.edit("<b>🔄 Gathering info...</b>")
     
     # Git Info
     version, commit, branch, up_status, remote = await get_git_info()
@@ -97,29 +76,77 @@ async def info_handler(client: Client, message: Message):
     cpu_usage = psutil.cpu_percent()
     memory_usage = process.memory_info().rss / 1024 / 1024 # MB
     
+    # Platform Info
+    py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    os_info = f"{platform.system()} {platform.release()}"
+    
     # Settings
     owner = f"{message.from_user.first_name}"
     if message.from_user.username:
         owner += f" | @{message.from_user.username}"
     repo_name = remote if remote != "Unknown" else "faustyu1/kuribot"
-    prefix = "." # Assuming default, strictly we should check client.command_prefixes but '.' is standard for userbots
     
     # Formatting
     uptime = get_uptime()
     
     # Version Link
-    version_display = f"{version} <a href='https://github.com/{repo_name}'>#{commit}</a>" if "/" in repo_name else f"{version} #{commit}"
+    version_display = f"<a href='https://github.com/{repo_name}'>Kuribot {version}</a>"
     
-    msg = f"""<b>😎 Owner:</b> {owner}
+    msg = f"""<b>👾 {version_display}</b>
+    
+<b>😎 Owner:</b> {owner}
+<b>⏳ Uptime:</b> {uptime}
+<b>🌲 Branch:</b> {branch} ({commit})
 
-<b>💫 Version:</b> {version_display}
-<b>🌳 Branch:</b> {branch}
-<b>😌 Status:</b> {up_status}
+<b>📊 Stats:</b>
+• <b>CPU:</b> {cpu_usage}%
+• <b>RAM:</b> {memory_usage:.1f} MB
+"""
 
-<b>⌨️ Prefix:</b> «{prefix}»
-<b>⌛️ Uptime:</b> {uptime}
+    if banner:
+        try:
+            # Prepare reply parameters
+            reply_to = message.reply_to_message.id if message.reply_to_message else None
+            
+            # Delete the command message
+            await message.delete()
+            
+            # Send with banner
+            if banner.endswith((".mp4", ".gif")):
+                 await client.send_animation(message.chat.id, banner, caption=msg, reply_to_message_id=reply_to)
+            else:
+                try:
+                    await client.send_photo(message.chat.id, banner, caption=msg, reply_to_message_id=reply_to)
+                except Exception as e:
+                    # Fallback for file_ids that are not photos
+                    err_str = str(e).upper()
+                    if "ANIMATION" in err_str:
+                        await client.send_animation(message.chat.id, banner, caption=msg, reply_to_message_id=reply_to)
+                    elif "VIDEO" in err_str:
+                        await client.send_video(message.chat.id, banner, caption=msg, reply_to_message_id=reply_to)
+                    else:
+                        raise e
+        except Exception as e:
+            # Fallback if banner fails
+            await client.send_message(message.chat.id, f"{msg}\n\n<i>⚠️ Failed to load banner: {e}</i>")
+    else:
+        await message.edit(msg, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
-<b>⚡️ CPU usage:</b> ~{cpu_usage}%
-<b>💼 RAM usage:</b> ~{memory_usage:.1f} MB"""
+@Client.on_message(filters.command("setbanner", prefixes=".") & filters.me)
+async def set_banner_handler(client: Client, message: Message):
+    if not message.reply_to_message:
+        return await message.edit("<b>⚠️ Reply to a photo or GIF to set it as banner!</b>")
+        
+    media = message.reply_to_message.photo or message.reply_to_message.animation or message.reply_to_message.video
+    
+    if not media:
+        return await message.edit("<b>⚠️ Please reply to a valid photo or animation.</b>")
+    
+    file_id = media.file_id
+    config.set("info_banner", file_id)
+    await message.edit("<b>✅ Banner updated!</b> Try <code>.info</code>")
 
-    await message.edit(msg, disable_web_page_preview=True)
+@Client.on_message(filters.command("delbanner", prefixes=".") & filters.me)
+async def del_banner_handler(client: Client, message: Message):
+    config.delete("info_banner")
+    await message.edit("<b>🗑 Banner removed!</b>")

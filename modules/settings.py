@@ -1,36 +1,33 @@
 from pyrogram import filters, Client
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import Message
 import os
 
 @Client.on_message(filters.command("settings", prefixes=".") & filters.me)
 async def settings_handler(client: Client, message: Message):
-    text = (
-        "<b>⚙️ Настройки KuriBot</b>\n\n"
-        "Здесь вы можете управлять установленными модулями и конфигурацией бота."
-    )
+    from core.assistant import get_assistant
+    assistant = get_assistant()
     
-    # Simple settings menu (visual for now, logic can be added)
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📂 Управление модулями", callback_data="manage_modules")],
-        [InlineKeyboardButton("🔄 Перезагрузить", callback_data="reboot_bot")],
-        [InlineKeyboardButton("❌ Закрыть", callback_data="close_settings")]
-    ])
+    if not assistant:
+        return await message.edit("<b>⚠️ Ассистент не настроен (BOT_TOKEN отсутствует).</b>")
+
+    bot_info = await assistant.get_me()
     
-    # Note: KuriBots don't always support sending buttons to themselves in private, 
-    # but they work in groups or if sent from a bot. 
-    # For a self-bot, we usually just edit the message text with info.
+    # Delete the command message
+    await message.delete()
     
-    modules_count = len([f for f in os.listdir("modules") if f.endswith(".py")])
-    
-    status_text = (
-        f"<b>⚙️ Настройки KuriBot</b>\n\n"
-        f"• <b>Модулей загружено:</b> {modules_count}\n"
-        f"• <b>Python:</b> 3.11\n"
-        f"• <b>Библиотека:</b> Kurigram (Pyrogram)\n\n"
-        f"<i>Для установки нового модуля просто закиньте .py файл в папку modules/ и перезапустите контейнер.</i>"
-    )
-    
-    await message.edit(status_text)
+    try:
+        # Get inline results from assistant
+        results = await client.get_inline_bot_results(bot_info.username, "settings")
+        
+        # Send the first result (our settings menu)
+        await client.send_inline_bot_result(
+            chat_id=message.chat.id,
+            query_id=results.query_id,
+            result_id=results.results[0].id
+        )
+    except Exception as e:
+        # Fallback if inline fails
+        await client.send_message(message.chat.id, f"<b>❌ Ошибка вызова inline-меню:</b> <code>{e}</code>")
 
 @Client.on_message(filters.command("install", prefixes=".") & filters.me)
 async def install_handler(client: Client, message: Message):

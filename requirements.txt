@@ -5,3 +5,4 @@ aiohttp
 rich
 uvloop; platform_system != 'Windows'
 psutil
+aiogram
