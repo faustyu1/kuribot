@@ -11,6 +11,7 @@ class AssistantBot:
         self.dp = Dispatcher()
         self.logger = logging.getLogger("kuribot.assistant")
         self.me = None
+        self._current_edit_key = None
         self._setup_handlers()
 
     async def get_me(self):
@@ -67,6 +68,28 @@ class AssistantBot:
                 except:
                     pass
 
+        @self.dp.message()
+        async def handle_text_messages(message: types.Message):
+            owner_id = config.get("owner_id")
+            if message.from_user.id != owner_id: return
+
+            if hasattr(self, "_current_edit_key") and self._current_edit_key:
+                key = self._current_edit_key
+                new_val = message.text
+                
+                # Simple type inference
+                if new_val.lower() == "true": new_val = True
+                elif new_val.lower() == "false": new_val = False
+                elif new_val.isdigit(): new_val = int(new_val)
+                
+                config.set(key, new_val)
+                self._current_edit_key = None
+                
+                await message.reply(f"<b>✅ Значение для <code>{key}</code> обновлено!</b>")
+                # Suggest going back to settings
+                kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="⚙️ Вернуться в конфиг", callback_data="set_config")]])
+                await self.bot.send_message(message.chat.id, "Хотите продолжить настройку?", reply_markup=kb)
+
         @self.dp.inline_query()
         async def handle_inline(query: types.InlineQuery):
             if query.query == "settings":
@@ -85,7 +108,11 @@ class AssistantBot:
                         title="⚙️ Настройки KuriBot",
                         description="Открыть панель управления",
                         input_message_content=types.InputTextMessageContent(
-                            message_text="<b>⚙️ Настройки KuriBot</b>\n\nВыберите категорию для настройки:",
+                            message_text=(
+                                "<b>⚙️ Настройки KuriBot</b>\n\n"
+                                f"Текущий префикс: <code>{config.get('prefix', '.')}</code>\n\n"
+                                "Выберите категорию для настройки:"
+                            ),
                             parse_mode="HTML"
                         ),
                         reply_markup=keyboard
@@ -142,7 +169,10 @@ class AssistantBot:
             ])
 
             if data == "set_main":
-                await self.edit_message(callback, "<b>⚙️ Настройки KuriBot</b>\n\nВыберите категорию для настройки:", 
+                await self.edit_message(callback, 
+                                     f"<b>⚙️ Настройки KuriBot</b>\n\n"
+                                     f"Текущий префикс: <code>{config.get('prefix', '.')}</code>\n\n"
+                                     f"Выберите категорию для настройки:", 
                                      reply_markup=main_kb)
 
             elif data == "set_modules":
@@ -201,8 +231,63 @@ class AssistantBot:
                 await self.edit_message(callback, text, reply_markup=back_kb)
 
             elif data == "set_config":
-                text = "<b>⚙️ Конфигурация JSON</b>\n\n<i>Прямое редактирование конфига будет добавлено в следующих версиях.</i>"
-                await self.edit_message(callback, text, reply_markup=back_kb)
+                raw_cfg = config.all()
+                text = (
+                    "<b>⚙️ Конфигурация JSON</b>\n\n"
+                    f"💡 <i>Чтобы изменить префикс команд, выберите ключ <code>prefix</code>.</i>\n\n"
+                )
+                
+                cfg_kb_list = []
+                for key in sorted(raw_cfg.keys()):
+                    # Limit long keys/values for display
+                    val = str(raw_cfg[key])
+                    if len(val) > 20: val = val[:17] + "..."
+                    
+                    button_text = f"{key}: {val}"
+                    cfg_kb_list.append([types.InlineKeyboardButton(text=button_text, callback_data=f"cfg_edit_{key}")])
+                
+                cfg_kb_list.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="set_main")])
+                cfg_kb = types.InlineKeyboardMarkup(inline_keyboard=cfg_kb_list)
+                
+                if not raw_cfg:
+                    text += "<i>Конфигурация пуста.</i>"
+                
+                await self.edit_message(callback, text, reply_markup=cfg_kb)
+
+            elif data.startswith("cfg_edit_"):
+                key = data.replace("cfg_edit_", "")
+                val = config.get(key)
+                text = (
+                    f"<b>⚙️ Редактирование ключа:</b> <code>{key}</code>\n\n"
+                    f"Текущее значение: <code>{val}</code>\n\n"
+                    f"Чтобы изменить значение, отправьте новое сообщение в этот чат.\n"
+                    f"Чтобы удалить ключ, нажмите кнопку ниже."
+                )
+                
+                edit_kb = types.InlineKeyboardMarkup(inline_keyboard=[
+                    [types.InlineKeyboardButton(text="🗑 Удалить ключ", callback_data=f"cfg_del_{key}")],
+                    [types.InlineKeyboardButton(text="⬅️ Назад", callback_data="set_config")]
+                ])
+                
+                await self.edit_message(callback, text, reply_markup=edit_kb)
+                # Store state in dispatcher for message handler
+                # (Simple way for this specific bot)
+                self._current_edit_key = key
+
+            elif data.startswith("cfg_del_"):
+                key = data.replace("cfg_del_", "")
+                config.delete(key)
+                await callback.answer(f"✅ Ключ {key} удален")
+                # Back to list
+                raw_cfg = config.all()
+                text = "<b>⚙️ Конфигурация JSON</b>\n\n"
+                cfg_kb_list = []
+                for k in sorted(raw_cfg.keys()):
+                    val = str(raw_cfg[k])
+                    if len(val) > 20: val = val[:17] + "... "
+                    cfg_kb_list.append([types.InlineKeyboardButton(text=f"{k}: {val}", callback_data=f"cfg_edit_{k}")])
+                cfg_kb_list.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="set_main")])
+                await self.edit_message(callback, text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=cfg_kb_list))
             
             try:
                 await callback.answer()

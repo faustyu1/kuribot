@@ -1,6 +1,10 @@
+# meta developer: @faustyu
+# meta description: Безопасность и защита от спама
+
 import os
 import aiohttp
 import asyncio
+
 from pyrogram import filters, Client
 from pyrogram.types import Message
 from core.auth_manager import auth_manager
@@ -10,7 +14,7 @@ from core.config import config
 # Temporary storage for pending installations: {msg_id: (url, content, filename)}
 _PENDING = {}
 
-@Client.on_message(filters.command(["auth", "trust"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["auth", "trust"], prefixes=config.get("prefix", ".")) & filters.me)
 async def auth_handler(client: Client, message: Message):
     target_id = None
     name = "Объект"
@@ -41,7 +45,7 @@ async def auth_handler(client: Client, message: Message):
         else:
             await message.edit("<b>⚠️ Чат уже авторизован.</b>")
 
-@Client.on_message(filters.command(["unauth", "untrust", "ban"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["unauth", "untrust", "ban"], prefixes=config.get("prefix", ".")) & filters.me)
 async def unauth_handler(client: Client, message: Message):
     target_id = None
 
@@ -73,7 +77,7 @@ async def unauth_handler(client: Client, message: Message):
         else:
             await message.edit("<b>⚠️ Чат не был авторизован.</b>")
 
-@Client.on_message(filters.command(["unban"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["unban"], prefixes=config.get("prefix", ".")) & filters.me)
 async def unban_handler(client: Client, message: Message):
     target_id = None
     if len(message.command) > 1:
@@ -92,7 +96,7 @@ async def unban_handler(client: Client, message: Message):
     else:
         await message.edit("<b>⚠️ Пользователь не в ЧС.</b>")
 
-@Client.on_message(filters.command("authlist", prefixes=".") & filters.me)
+@Client.on_message(filters.command("authlist", prefixes=config.get("prefix", ".")) & filters.me)
 async def authlist_handler(client: Client, message: Message):
     users = auth_manager.data.get("users", [])
     chats = auth_manager.data.get("chats", [])
@@ -107,7 +111,7 @@ async def authlist_handler(client: Client, message: Message):
     out += "\n".join([f"• <code>{b_id}</code>" for b_id in blacklist]) if blacklist else "<i>Список пуст</i>"
     await message.edit(out)
 
-@Client.on_message(filters.command("dlmod", prefixes=".") & filters.me)
+@Client.on_message(filters.command("dlmod", prefixes=config.get("prefix", ".")) & filters.me)
 async def dlmod_handler(client, message: Message):
     if len(message.command) < 2:
         return await message.edit("<b>⚠️ Укажите ссылку на модуль.</b>")
@@ -161,7 +165,7 @@ async def dlmod_handler(client, message: Message):
         del _PENDING[sent.id]
         await sent.edit("<b>⏰ Время ожидания подтверждения истекло.</b>")
 
-@Client.on_message(filters.command("confirm", prefixes=".") & filters.me)
+@Client.on_message(filters.command("confirm", prefixes=config.get("prefix", ".")) & filters.me)
 async def confirm_handler(client, message: Message):
     if not message.reply_to_message or message.reply_to_message.id not in _PENDING:
         return

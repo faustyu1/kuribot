@@ -8,7 +8,7 @@ from core.config import config
 # Temporary storage for pending installations: {msg_id: (url, content, filename)}
 _PENDING = {}
 
-@Client.on_message(filters.command("dlmod", prefixes=".") & filters.me)
+@Client.on_message(filters.command("dlmod", prefixes=config.get("prefix", ".")) & filters.me)
 async def dlmod_handler(client, message: Message):
     if len(message.command) < 2:
         return await message.edit("<b>⚠️ Укажите ссылку на модуль.</b>")
@@ -68,7 +68,7 @@ async def dlmod_handler(client, message: Message):
         del _PENDING[sent.id]
         await sent.edit("<b>⏰ Время ожидания подтверждения истекло.</b>")
 
-@Client.on_message(filters.command("confirm", prefixes=".") & filters.me)
+@Client.on_message(filters.command("confirm", prefixes=config.get("prefix", ".")) & filters.me)
 async def confirm_handler(client, message: Message):
     if not message.reply_to_message or message.reply_to_message.id not in _PENDING:
         return # Ignore or show error

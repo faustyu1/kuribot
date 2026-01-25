@@ -1,8 +1,9 @@
 from pyrogram import filters, Client
 from pyrogram.types import Message
 import os
+from core.config import config
 
-@Client.on_message(filters.command("settings", prefixes=".") & filters.me)
+@Client.on_message(filters.command("settings", prefixes=config.get("prefix", ".")) & filters.me)
 async def settings_handler(client: Client, message: Message):
     from core.assistant import get_assistant
     assistant = get_assistant()
@@ -29,7 +30,7 @@ async def settings_handler(client: Client, message: Message):
         # Fallback if inline fails
         await client.send_message(message.chat.id, f"<b>❌ Ошибка вызова inline-меню:</b> <code>{e}</code>")
 
-@Client.on_message(filters.command("install", prefixes=".") & filters.me)
+@Client.on_message(filters.command("install", prefixes=config.get("prefix", ".")) & filters.me)
 async def install_handler(client: Client, message: Message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("<b>Ответьте на .py файл сообщения, чтобы установить его как модуль.</b>")

@@ -1,7 +1,8 @@
 from pyrogram import filters, Client
 from pyrogram.types import Message, User
+from core.config import config
 
-@Client.on_message(filters.command("whois", prefixes=".") & filters.me)
+@Client.on_message(filters.command("whois", prefixes=config.get("prefix", ".")) & filters.me)
 async def whois_handler(client: Client, message: Message):
     user = None
     if message.reply_to_message:

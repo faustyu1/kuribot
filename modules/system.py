@@ -3,8 +3,9 @@ import time
 from pyrogram import filters, Client
 from pyrogram.types import Message
 from core.utils import get_uptime
+from core.config import config
 
-@Client.on_message(filters.command(["load", "reload"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["load", "reload"], prefixes=config.get("prefix", ".")) & filters.me)
 async def reload_module_handler(client, message: Message):
     if len(message.command) < 2: return await message.edit("<b>Введите название модуля.</b>")
     module_name = message.command[1].replace(".py", "")
@@ -15,7 +16,7 @@ async def reload_module_handler(client, message: Message):
     else:
         await message.edit(f"<b>❌ Ошибка:</b>\n<code>{result}</code>")
 
-@Client.on_message(filters.command("unload", prefixes=".") & filters.me)
+@Client.on_message(filters.command("unload", prefixes=config.get("prefix", ".")) & filters.me)
 async def unload_module_handler(client, message: Message):
     if len(message.command) < 2: return await message.edit("<b>Введите название модуля.</b>")
     module_name = message.command[1].replace(".py", "")
@@ -26,7 +27,7 @@ async def unload_module_handler(client, message: Message):
     else:
         await message.edit(f"<b>❌ Ошибка:</b> <code>{result}</code>")
 
-@Client.on_message(filters.command(["modlist", "modules"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["modlist", "modules"], prefixes=config.get("prefix", ".")) & filters.me)
 async def modlist_handler(client, message: Message):
     loaded = list(client._handlers_map.keys())
     all_files = sorted([f.replace(".py", "") for f in os.listdir("modules") if f.endswith(".py") and not f.startswith("__")])
@@ -38,7 +39,7 @@ async def modlist_handler(client, message: Message):
     out += f"\n📊 Всего: <b>{len(all_files)}</b> | Загружено: <b>{len(loaded)}</b>"
     await message.edit(out)
 
-@Client.on_message(filters.command("settings", prefixes=".") & filters.me)
+@Client.on_message(filters.command("settings", prefixes=config.get("prefix", ".")) & filters.me)
 async def settings_handler(client: Client, message: Message):
     from core.assistant import get_assistant
     assistant = get_assistant()
@@ -51,7 +52,7 @@ async def settings_handler(client: Client, message: Message):
     except Exception as e:
         await client.send_message(message.chat.id, f"<b>❌ Ошибка inline:</b> <code>{e}</code>")
 
-@Client.on_message(filters.command("info", prefixes=".") & filters.me)
+@Client.on_message(filters.command("info", prefixes=config.get("prefix", ".")) & filters.me)
 async def info_handler(client: Client, message: Message):
     # Retrieve banner from config
     from core.config import config
@@ -74,14 +75,14 @@ async def info_handler(client: Client, message: Message):
         from pyrogram.types import LinkPreviewOptions
         await message.edit(msg, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
-@Client.on_message(filters.command("ping", prefixes=".") & filters.me)
+@Client.on_message(filters.command("ping", prefixes=config.get("prefix", ".")) & filters.me)
 async def ping_handler(client: Client, message: Message):
     start = time.time()
     await message.edit("🏓 Pinging...")
     duration = (time.time() - start) * 1000
     await message.edit(f"<b>🏓 Pong!</b>\n⏱ <code>{duration:.2f}ms</code>")
 
-@Client.on_message(filters.command("install", prefixes=".") & filters.me)
+@Client.on_message(filters.command("install", prefixes=config.get("prefix", ".")) & filters.me)
 async def install_handler(client: Client, message: Message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("<b>⚠️ Ответьте на .py файл.</b>")

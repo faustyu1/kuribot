@@ -59,7 +59,6 @@ async def setup_log_group(userbot: KuriBot, assistant):
                 )
             )
             logger.info("Assistant bot added and promoted in log group.")
-            await assistant.send_log(log_group_id, "🚀 **KuriBot запущен!**\nЛоги теперь будут приходить сюда.")
         except Exception as e:
             if "USER_ALREADY_PARTICIPANT" not in str(e):
                 logger.error(f"Failed to add assistant to log group: {e}")

@@ -38,5 +38,8 @@ class ConfigManager:
             del self.config[key]
             self._save()
 
+    def all(self) -> dict:
+        return self.config
+
 # Global instance
 config = ConfigManager()

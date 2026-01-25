@@ -1,14 +1,15 @@
 from pyrogram import filters, Client
 from pyrogram.types import Message
 import asyncio
+from core.config import config
 
-@Client.on_message(filters.command("del", prefixes=".") & filters.me)
+@Client.on_message(filters.command("del", prefixes=config.get("prefix", ".")) & filters.me)
 async def delete_message(client: Client, message: Message):
     if message.reply_to_message:
         await message.reply_to_message.delete()
     await message.delete()
 
-@Client.on_message(filters.command("purge", prefixes=".") & filters.me)
+@Client.on_message(filters.command("purge", prefixes=config.get("prefix", ".")) & filters.me)
 async def purge_messages(client: Client, message: Message):
     if not message.reply_to_message:
         await message.edit("<b>Reply to a message to start purging from there.</b>")

@@ -95,25 +95,22 @@ class KuriBot(Client):
         await super().start()
         
         # Manually load all modules from the modules directory
+        loaded_modules = []
         if os.path.exists("modules"):
             for file in os.listdir("modules"):
                 if file.endswith(".py") and not file.startswith("__"):
                     module_name = file[:-3]
                     success, count = await self.load_module(module_name)
                     if success:
-                        self._logger.info(f"Loaded module: {module_name} ({count} handlers)")
+                        loaded_modules.append(module_name)
                     else:
                         self._logger.error(f"Failed to auto-load {module_name}: {count}")
+            
+            if loaded_modules:
+                self._logger.info(f"Loaded {len(loaded_modules)} modules: {', '.join(loaded_modules)}")
 
         me = await self.get_me()
         self._logger.info(f"Bot started as {me.first_name} (@{me.username})")
-
-        # Global command logger
-        @self.on_message(filters.me & (filters.text | filters.caption) & filters.regex(r"^\."), group=-100)
-        async def cmd_log_handler(_, message):
-            chat = message.chat.title or message.chat.first_name or message.chat.id
-            text = message.text or message.caption
-            self._logger.info(f"[CMD] {text} | Chat: {chat}")
 
     async def stop(self, *args):
         self._logger.info("Stopping KuriBot...")

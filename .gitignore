@@ -154,3 +154,4 @@ data/
 
 # Docker
 .dockerignore
+modules/funstatfarm.py

@@ -1,13 +1,17 @@
+from core.config import config
+# meta developer: @faustyu
+# meta description: Управление чатом (удаление, очистка, инфо)
+
 import asyncio
 from pyrogram import filters, Client
 from pyrogram.types import Message
 
-@Client.on_message(filters.command("del", prefixes=".") & filters.me)
+@Client.on_message(filters.command("del", prefixes=config.get("prefix", ".")) & filters.me)
 async def delete_message(client: Client, message: Message):
     if message.reply_to_message: await message.reply_to_message.delete()
     await message.delete()
 
-@Client.on_message(filters.command("purge", prefixes=".") & filters.me)
+@Client.on_message(filters.command("purge", prefixes=config.get("prefix", ".")) & filters.me)
 async def purge_messages(client: Client, message: Message):
     if not message.reply_to_message: return await message.edit("<b>Ответьте на сообщение, чтобы начать чистку.</b>")
     chat_id = message.chat.id
@@ -25,7 +29,7 @@ async def purge_messages(client: Client, message: Message):
     await asyncio.sleep(2)
     await status.delete()
 
-@Client.on_message(filters.command("whois", prefixes=".") & filters.me)
+@Client.on_message(filters.command("whois", prefixes=config.get("prefix", ".")) & filters.me)
 async def whois_handler(client: Client, message: Message):
     user = message.reply_to_message.from_user if message.reply_to_message else \
            (await client.get_users(message.command[1]) if len(message.command) > 1 else message.from_user)

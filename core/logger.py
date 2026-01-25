@@ -134,7 +134,9 @@ def setup_logging():
     )
 
     # Specific levels for some libraries to avoid spam
-    logging.getLogger("pyrogram").setLevel(logging.WARNING)
-    logging.getLogger("aiohttp").setLevel(logging.WARNING)
+    logging.getLogger("pyrogram").setLevel(logging.ERROR)
+    logging.getLogger("aiohttp").setLevel(logging.ERROR)
+    logging.getLogger("aiogram").setLevel(logging.ERROR)
+    logging.getLogger("aiogram.dispatcher").setLevel(logging.ERROR)
 
     return logging.getLogger("kuribot")

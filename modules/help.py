@@ -1,3 +1,7 @@
+from core.config import config
+# meta developer: @faustyu
+# meta description: Помощь и список команд
+
 from pyrogram import filters, Client
 from pyrogram.types import Message, LinkPreviewOptions
 import os
@@ -32,7 +36,7 @@ def get_commands(filt):
     if hasattr(filt, "other"): res.extend(get_commands(filt.other))
     return res
 
-@Client.on_message(filters.command("help", prefixes=".") & filters.me)
+@Client.on_message(filters.command("help", prefixes=config.get("prefix", ".")) & filters.me)
 async def help_handler(client: Client, message: Message):
     if len(message.command) > 1:
         module_name = message.command[1].lower().replace(".py", "")

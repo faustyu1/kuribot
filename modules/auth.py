@@ -1,8 +1,9 @@
 from pyrogram import filters, Client
 from pyrogram.types import Message
+from core.config import config
 from core.auth_manager import auth_manager
 
-@Client.on_message(filters.command(["auth", "trust"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["auth", "trust"], prefixes=config.get("prefix", ".")) & filters.me)
 async def auth_handler(client: Client, message: Message):
     target_id = None
     name = "Объект"
@@ -35,7 +36,7 @@ async def auth_handler(client: Client, message: Message):
         else:
             await message.edit("<b>⚠️ Чат уже авторизован.</b>")
 
-@Client.on_message(filters.command(["unauth", "untrust", "ban"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["unauth", "untrust", "ban"], prefixes=config.get("prefix", ".")) & filters.me)
 async def unauth_handler(client: Client, message: Message):
     target_id = None
 
@@ -70,7 +71,7 @@ async def unauth_handler(client: Client, message: Message):
         else:
             await message.edit("<b>⚠️ Чат не был авторизован.</b>")
 
-@Client.on_message(filters.command(["unban"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["unban"], prefixes=config.get("prefix", ".")) & filters.me)
 async def unban_handler(client: Client, message: Message):
     target_id = None
     if len(message.command) > 1:
@@ -89,7 +90,7 @@ async def unban_handler(client: Client, message: Message):
     else:
         await message.edit("<b>⚠️ Пользователь не в ЧС.</b>")
 
-@Client.on_message(filters.command("authlist", prefixes=".") & filters.me)
+@Client.on_message(filters.command("authlist", prefixes=config.get("prefix", ".")) & filters.me)
 async def authlist_handler(client: Client, message: Message):
     users = auth_manager.data.get("users", [])
     chats = auth_manager.data.get("chats", [])

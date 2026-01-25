@@ -1,8 +1,9 @@
 from pyrogram import filters, Client
 from pyrogram.types import Message
 import os
+from core.config import config
 
-@Client.on_message(filters.command(["load", "reload"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["load", "reload"], prefixes=config.get("prefix", ".")) & filters.me)
 async def reload_module_handler(client, message: Message):
     if len(message.command) < 2:
         return await message.edit("<b>Введите название модуля.</b>")
@@ -17,7 +18,7 @@ async def reload_module_handler(client, message: Message):
     else:
         await message.edit(f"<b>❌ Ошибка при загрузке:</b>\n<code>{count_or_err}</code>")
 
-@Client.on_message(filters.command("unload", prefixes=".") & filters.me)
+@Client.on_message(filters.command("unload", prefixes=config.get("prefix", ".")) & filters.me)
 async def unload_module_handler(client, message: Message):
     if len(message.command) < 2:
         return await message.edit("<b>Введите название модуля для выгрузки.</b>")
@@ -32,7 +33,7 @@ async def unload_module_handler(client, message: Message):
     else:
         await message.edit(f"<b>❌ Ошибка:</b> <code>{result}</code>")
 
-@Client.on_message(filters.command(["modlist", "modules"], prefixes=".") & filters.me)
+@Client.on_message(filters.command(["modlist", "modules"], prefixes=config.get("prefix", ".")) & filters.me)
 async def modlist_handler(client, message: Message):
     loaded = list(client._handlers_map.keys())
     all_files = sorted([f.replace(".py", "") for f in os.listdir("modules") if f.endswith(".py") and not f.startswith("__")])

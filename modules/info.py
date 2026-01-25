@@ -1,3 +1,6 @@
+# meta developer: @faustyu
+# meta description: Информация о системе и юзерботе
+
 import os
 import time
 import psutil
@@ -57,7 +60,7 @@ async def get_git_info():
         return "Unknown", "??????", "Unknown", "Unknown", "Unknown"
 
 
-@Client.on_message(filters.command("info", prefixes=".") & filters.me)
+@Client.on_message(filters.command("info", prefixes=config.get("prefix", ".")) & filters.me)
 async def info_handler(client: Client, message: Message):
     # Retrieve banner from config
     banner = config.get("info_banner")
@@ -132,7 +135,7 @@ async def info_handler(client: Client, message: Message):
     else:
         await message.edit(msg, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
-@Client.on_message(filters.command("setbanner", prefixes=".") & filters.me)
+@Client.on_message(filters.command("setbanner", prefixes=config.get("prefix", ".")) & filters.me)
 async def set_banner_handler(client: Client, message: Message):
     if not message.reply_to_message:
         return await message.edit("<b>⚠️ Reply to a photo or GIF to set it as banner!</b>")
@@ -146,7 +149,7 @@ async def set_banner_handler(client: Client, message: Message):
     config.set("info_banner", file_id)
     await message.edit("<b>✅ Banner updated!</b> Try <code>.info</code>")
 
-@Client.on_message(filters.command("delbanner", prefixes=".") & filters.me)
+@Client.on_message(filters.command("delbanner", prefixes=config.get("prefix", ".")) & filters.me)
 async def del_banner_handler(client: Client, message: Message):
     config.delete("info_banner")
     await message.edit("<b>🗑 Banner removed!</b>")
